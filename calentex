@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+
+YYYY="$(date +"%Y")"
+
+for (( MM = "01"; MM <= 12; MM++ )); do
+	if [ $MM -lt 10 ]; then file="calendar-0$MM.tex"
+	else file="calendar-$MM.tex"; fi
+
+	cp base-calendar.tex $file
+
+	blank_days=$(date --date="$YYYY-$MM-01" +"%u")
+
+	sed -i "s/\\\\\\\ % Month$/"$(date -d "$YYYY-$MM-01" +"%B")"\\\\\\\ % Month/" $file
+	sed -i "s/% Year$/"$YYYY" % Year/" $file
+
+	for (( i = 0; i < $blank_days; i++ )); do
+		sed -i "s/%\\\BlankDay/\\\BlankDay/" $file
+	done
+
+	[ $blank_days -ge 5 ] && sed -i "s/2\.5cm/2cm/g" $file
+
+	if [[ $MM -le 7 ]]; then
+		if [ $MM -eq 2 ]; then
+			sed -i "/^\\\day{}{\\\vspace{2.5cm}} % 29/d" $file
+			sed -i "/^\\\day{}{\\\vspace{2.5cm}} % 30/d" $file
+			sed -i "/^\\\day{}{\\\vspace{2.5cm}} % 31/d" $file
+		elif [ $((MM % 2)) -eq 0 ]; then
+			sed -i "/^\\\day{}{\\\vspace{2.5cm}} % 31/d" $file
+		fi
+	else
+		if [ $((MM % 2)) -ne 0 ]; then
+			sed -i "/^\\\day{}{\\\vspace{2.5cm}} % 31/d" $file
+		fi
+	fi
+
+	pdflatex $file &> /dev/null && rm $file\
+		$(basename $file .tex).aux $(basename $file .tex).log
+done
+
+pdfunite calendar-**.pdf calendar.pdf && rm calendar-**.pdf
